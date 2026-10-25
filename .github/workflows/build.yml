@@ -61,6 +61,8 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ env.NAME }}
+          # Keep .config (the real kernel config) in the artifact.
+          include-hidden-files: true
           path: |
             ${{ runner.temp }}/work/dist/*
             !${{ runner.temp }}/work/dist/NAME
