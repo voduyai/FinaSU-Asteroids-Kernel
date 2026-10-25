@@ -1,0 +1,66 @@
+name: Build kernel
+
+on:
+  workflow_dispatch:
+    inputs:
+      finasu_tag:
+        description: 'FinaSU release tag (empty = latest release)'
+        required: false
+        default: ''
+      susfs:
+        description: 'SUSFS built into the kernel'
+        type: boolean
+        default: true
+      bbg:
+        description: 'Baseband Guard'
+        type: boolean
+        default: true
+      networking:
+        description: 'Networking (IP set, NAT/TTL, CAKE, BBR default, CIFS...)'
+        type: boolean
+        default: true
+      unicode_fix:
+        description: 'Unicode path bypass fix'
+        type: boolean
+        default: true
+      bbrv3:
+        description: 'BBRv3 (changes TCP internals; experimental)'
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Free disk space
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          df -h /
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq bc bison flex cpio libssl-dev libelf-dev dwarves zip
+
+      - name: Build
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          FINASU_TAG: ${{ inputs.finasu_tag }}
+          SUSFS: ${{ inputs.susfs && '1' || '0' }}
+          BBG: ${{ inputs.bbg && '1' || '0' }}
+          NETWORKING: ${{ inputs.networking && '1' || '0' }}
+          UNICODE_FIX: ${{ inputs.unicode_fix && '1' || '0' }}
+          BBRV3: ${{ inputs.bbrv3 && '1' || '0' }}
+          WORK: ${{ runner.temp }}/work
+        run: |
+          bash scripts/build.sh
+          echo "NAME=$(cat "$WORK/dist/NAME")" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.NAME }}
+          path: |
+            ${{ runner.temp }}/work/dist/*
+            !${{ runner.temp }}/work/dist/NAME
