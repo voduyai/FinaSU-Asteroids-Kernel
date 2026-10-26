@@ -11,10 +11,28 @@
 #   BBRV3         BBRv3 TCP congestion control                 (default 1)
 #   WORK          work directory    (default ./work)
 #   JOBS          make -j value     (default nproc)
+#   GITHUB_TOKEN  optional, avoids GitHub API rate limits
 # Each feature uses its upstream project's own setup script or patch.
+# See docs/building-locally.md.
 set -euo pipefail
 
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
+case "${1:-}" in
+-h | --help) sed -n '2,/^set -euo/{/^#/s/^# \{0,1\}//p}' "$0"; exit 0 ;;
+esac
+
+missing=""
+for tool in bc bison flex cpio make git curl python3 zip patch pahole; do
+    command -v "$tool" > /dev/null || missing="$missing $tool"
+done
+for header in openssl/ssl.h gelf.h; do
+    [ -f "/usr/include/$header" ] || missing="$missing $header"
+done
+if [ -n "$missing" ]; then
+    echo "missing:$missing" >&2
+    echo "install them with: sudo bash scripts/install-deps.sh" >&2
+    exit 1
+fi
 # shellcheck source=../sources.env
 . "$ROOT/sources.env"
 
@@ -32,10 +50,12 @@ K=$WORK/common
 
 export KBUILD_BUILD_USER=build-user KBUILD_BUILD_HOST=build-host
 step() { printf '\n==== %s\n' "$*"; }
+# A GitHub annotation in Actions, a plain line elsewhere.
+warn() { if [ -n "${GITHUB_ACTIONS:-}" ]; then echo "::warning title=$1::$2"; else echo "WARNING ($1): $2" >&2; fi; }
 retry() { local n; for n in 1 2 3 4 5; do "$@" && return 0; echo "retry $n/5: $*" >&2; sleep $((n * 15)); done; return 1; }
 github_api() { curl -fsSL ${GITHUB_TOKEN:+-H "Authorization: Bearer $GITHUB_TOKEN"} "https://api.github.com/$1"; }
 
-mkdir -p "$WORK" "$DIST"
+mkdir -p "$WORK"
 cd "$WORK"
 
 step "Kernel source $KERNEL_SHA"
@@ -91,13 +111,13 @@ if [ "$SUSFS" = 1 ]; then
         cat "$WORK/susfs-check.log"
         # Its 10-patch hunk list only reminds FinaSU's maintainers which
         # KernelSU-side hunks they ported (that patch is never applied), and
-        # FinaSU v1.0.10 changed ksud_integration.c without refreshing it.
+        # since v1.0.10 FinaSU's ksud_integration.c no longer matches it.
         # Accept that one failure only after every interface check passed, and
         # repeat the 50-patch dry run the script did not reach.
         grep -q '^Supercall commands: ' "$WORK/susfs-check.log" &&
             tail -n 1 "$WORK/susfs-check.log" | grep -q '10 patch failure fingerprint changed' ||
             { echo "FinaSU's SUSFS check failed" >&2; exit 1; }
-        echo "::warning title=SUSFS check::FinaSU's 10-patch hunk list is out of date; interface checks passed"
+        warn "SUSFS check" "FinaSU's 10-patch hunk list is out of date; interface checks passed"
         patch -d "$K" -p1 --dry-run --batch --forward < "$FIFTY" > "$WORK/fifty.log" || { cat "$WORK/fifty.log"; exit 1; }
         ! grep -Eq 'FAILED|Reversed \(or previously applied\)' "$WORK/fifty.log" || { cat "$WORK/fifty.log"; exit 1; }
         echo "50 patch dry run: clean"
@@ -180,7 +200,7 @@ for opt in $REQUIRED; do
 done
 if [ "$NETWORKING" = 1 ]; then
     missing=$(while read -r opt val; do grep -qx "CONFIG_$opt=$val" "$OUT/.config" || echo "$opt"; done < "$ROOT/networking.config.list")
-    [ -z "$missing" ] || echo "::warning title=networking::not applied (unmet dependencies): $(echo $missing)"
+    [ -z "$missing" ] || warn networking "not applied (unmet dependencies): $(echo $missing)"
 fi
 grep -E '^CONFIG_(LTO_NONE|KSU|HEADERS_INSTALL|BBG|LSM|TCP_CONG_BBR3|DEFAULT_TCP_CONG)' "$OUT/.config"
 
@@ -201,7 +221,7 @@ FEATURES="FinaSU-$FINASU_TAG"
 [ "$NETWORKING" = 1 ] && FEATURES="$FEATURES-NET"
 [ "$UNICODE_FIX" = 1 ] && FEATURES="$FEATURES-Unicode"
 [ "$BBRV3" = 1 ] && FEATURES="$FEATURES-BBRv3"
-NAME="$FEATURES-asteroids-6.6.144"
+NAME="$FEATURES-asteroids-$("${MAKE[@]}" -s kernelversion)"
 rm -rf "$DIST" "$WORK/ak3" && mkdir -p "$DIST"
 retry git clone -q --depth=1 https://github.com/osm0sis/AnyKernel3.git "$WORK/ak3"
 rm -rf "$WORK/ak3/.git" "$WORK/ak3/.github" "$WORK/ak3/README.md" "$WORK/ak3/modules" "$WORK/ak3/patch" "$WORK/ak3/ramdisk"

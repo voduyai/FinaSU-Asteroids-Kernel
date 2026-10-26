@@ -40,9 +40,7 @@ jobs:
           df -h /
 
       - name: Install build tools
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq bc bison flex cpio libssl-dev libelf-dev dwarves zip
+        run: sudo bash scripts/install-deps.sh
 
       - name: Build
         env:
