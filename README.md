@@ -79,7 +79,54 @@ If the phone hangs on the logo after installing a KernelSU module, it is usually
 
 ## When VoltageOS updates
 
-The kernel only fits the ROM build it was made for. If `uname -r` changes after an update, find the new commit in the ROM's kernel tree, set `KERNEL_SHA` in `sources.env`, check which clang the ROM uses, and rebuild.
+This kernel is an exact rebuild of one VoltageOS kernel. The ROM's own modules (`vendor_boot`, `vendor_dlkm`, `system_dlkm`) are built together with that kernel, so a kernel from an older ROM build may not boot on a newer one.
+
+An update also replaces `boot.img`, so after any update the phone is back on the stock kernel and loses the built-in root until you flash again.
+
+### 1. Check whether the kernel changed
+
+After updating, let the phone boot once on the new stock kernel, then:
+
+```bash
+adb shell uname -r
+adb shell cat /proc/version
+```
+
+| `uname -r` | What to do |
+|---|---|
+| Still `6.6.144-android15-8-4k-g580b8ea6c4fb` | Same kernel. Flash the same AnyKernel3 zip again; no rebuild needed |
+| Anything else | The kernel changed. Continue with step 2 |
+
+### 2. Find the new kernel source
+
+The part after `-g` is the first 12 characters of the kernel's git commit, e.g. `580b8ea6c4fb`. Open these URLs with your commit in place of `<sha>`; the one that shows a commit is the source:
+
+- `https://github.com/pixelos-asteroids/android_kernel_nothing_sm7635/commit/<sha>`
+- `https://github.com/voltageos-asteroids/kernel_nothing_sm7635/commit/<sha>`
+
+If neither has it, the ROM's maintainers have not published that source yet. You cannot build a matching kernel until they do; stay on root via FinaSU LKM (patched `init_boot`) meanwhile.
+
+### 3. Note the compiler
+
+In `/proc/version`, find `based on r…`, e.g. `based on r596125`. That is the clang the ROM used, and the rebuild must use the same one.
+
+### 4. Update `sources.env` and rebuild
+
+Edit `sources.env`:
+
+```bash
+KERNEL_REPO=https://github.com/<owner>/<repo>.git   # the repo from step 2
+KERNEL_SHA=<full 40-character commit>               # copy it from the commit page
+CLANG_VERSION=r<number>                             # from step 3
+```
+
+Commit, push and run the workflow (or `bash scripts/build.sh` locally).
+
+### 5. Check the result before flashing
+
+- The `==== Result` step must print a `Linux version` with exactly the new `uname -r`.
+- If a step fails while applying a patch (SUSFS, BBRv3, Unicode fix), that patch does not fit the new kernel yet. Turn that feature off and build again, or wait for a newer FinaSU / patch release.
+- Boot-test with `fastboot boot` first (install option B) before flashing.
 
 ## Sources and credits
 
