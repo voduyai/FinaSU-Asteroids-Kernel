@@ -13,7 +13,7 @@ Every feature is added the way its own project documents it. Nothing is merged o
 | Baseband Guard | on | `vc-teahouse/Baseband-guard`'s `setup.sh` at a pinned commit, `CONFIG_BBG=y`, `baseband_guard` appended to `CONFIG_LSM` as its instructions say |
 | Networking | on | WildKernel's networking set (`networking.config.list`): IP set, firewall matches, IPv6 NAT, TTL/HL, BBR as default, CAKE/FQ, CONNMARK, WireGuard, CIFS |
 | Unicode fix | on | `unicode_bypass_fix_6.1+.patch` from `WildKernels/kernel_patches` |
-| BBRv3 | off | `0001-net-tcp-backport-BBRv3-to-android15-6.6.patch` from `WildKernels/kernel_patches`. Changes TCP internals; test separately |
+| BBRv3 | on | `0001-net-tcp-backport-BBRv3-to-android15-6.6.patch` from `WildKernels/kernel_patches`. Changes TCP internals. Boots on this phone (tested 2026-10-26 with every other feature on). Still `bbr` (v1) by default; switch with `echo bbr3 > /proc/sys/net/ipv4/tcp_congestion_control` |
 | BPF / BTF / eBPF / FUSE-BPF | always | Already enabled in the stock VoltageOS kernel |
 
 ## Matching the stock kernel
@@ -39,7 +39,7 @@ Or locally on Linux / WSL (needs `bc bison flex cpio libssl-dev libelf-dev dwarv
 bash scripts/build.sh
 ```
 
-Turn features off with environment variables, e.g. `SUSFS=0 BBRV3=1 bash scripts/build.sh`.
+Turn features off with environment variables, e.g. `SUSFS=0 BBRV3=0 bash scripts/build.sh`.
 
 The artifact contains:
 - `Image`: the kernel

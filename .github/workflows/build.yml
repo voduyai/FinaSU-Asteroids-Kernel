@@ -24,9 +24,9 @@ on:
         type: boolean
         default: true
       bbrv3:
-        description: 'BBRv3 (changes TCP internals; experimental)'
+        description: 'BBRv3 (built in; bbr v1 stays the default algorithm)'
         type: boolean
-        default: false
+        default: true
 
 jobs:
   build:

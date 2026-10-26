@@ -8,7 +8,7 @@
 #   BBG           Baseband Guard                               (default 1)
 #   NETWORKING    IP set, NAT/TTL, CAKE, BBR default, CIFS...  (default 1)
 #   UNICODE_FIX   Unicode path bypass fix                      (default 1)
-#   BBRV3         BBRv3 TCP congestion control                 (default 0)
+#   BBRV3         BBRv3 TCP congestion control                 (default 1)
 #   WORK          work directory    (default ./work)
 #   JOBS          make -j value     (default nproc)
 # Each feature uses its upstream project's own setup script or patch.
@@ -23,7 +23,7 @@ SUSFS=${SUSFS:-1}
 BBG=${BBG:-1}
 NETWORKING=${NETWORKING:-1}
 UNICODE_FIX=${UNICODE_FIX:-1}
-BBRV3=${BBRV3:-0}
+BBRV3=${BBRV3:-1}
 WORK=${WORK:-$ROOT/work}
 JOBS=${JOBS:-$(nproc)}
 OUT=$WORK/out
