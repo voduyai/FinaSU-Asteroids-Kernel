@@ -50,7 +50,19 @@ The artifact contains:
 
 ## Install
 
-1. Use the **stock** `init_boot` (not one patched with KernelSU LKM). Remove any SUSFS LKM module if one is installed.
+Keep the stock VoltageOS `boot.img` at hand so you can always flash it back from fastboot. Remove any SUSFS LKM module first if you use the built-in SUSFS.
+
+### Option A: already rooted with FinaSU (LKM)
+
+1. Install the FinaSU APK from the artifact (same version as the kernel).
+2. In the FinaSU app: **Install → Flash AnyKernel3 ZIP**, pick the `*-AnyKernel3.zip` from the artifact and the current slot.
+3. Reboot. The app should now report **Built-In** instead of LKM.
+
+Keeping the LKM-patched `init_boot` is fine: FinaSU's `ksuinit` sees that KernelSU is already in the kernel and skips loading `kernelsu.ko`. You can still flash the stock `init_boot` later to keep things clean.
+
+### Option B: not rooted yet
+
+1. Use the stock `init_boot`.
 2. Put `Image` into the stock VoltageOS `boot.img`:
    ```bash
    magiskboot unpack boot.img
@@ -61,7 +73,7 @@ The artifact contains:
    ```bash
    fastboot boot new-boot.img
    ```
-4. Install the FinaSU APK from the artifact. Flash only after root, modules and SUSFS work.
+4. Install the FinaSU APK from the artifact. If root, modules and SUSFS work, flash it to the active slot (`fastboot getvar current-slot`, then `fastboot flash boot_a new-boot.img` or `boot_b`), or flash the AnyKernel3 zip from the app as in option A.
 
 If the phone hangs on the logo after installing a KernelSU module, it is usually the module, not the kernel. Boot into safe mode (press volume down repeatedly while booting) to start with all modules off, then remove the module in the app.
 
